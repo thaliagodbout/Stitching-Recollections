@@ -109,9 +109,6 @@ const int fadeLED = 13;
 
 void setup(){  
   Serial.begin(57600);
-   
-  //while (!Serial) ; {} //uncomment when using the serial monitor 
-//  Serial.println("Bare Conductive Touch MP3 player");
 
   if(!sd.begin(SD_SEL, SPI_HALF_SPEED)) sd.initErrorHalt();
 
@@ -121,16 +118,13 @@ void setup(){
   MPR121.setTouchThreshold(10); // Set touch threshold - lower => more sensisitive
   MPR121.setReleaseThreshold(5);  // Must ALWAYS be lower than touch threshold
 
-  // Adding from prox_led:
   // slow down some of the MPR121 baseline filtering to avoid 
   // filtering out slow hand movements
   MPR121.setRegister(MPR121_NHDF, 0x01); //noise half delta (falling)
   MPR121.setRegister(MPR121_FDLF, 0x3F); //filter delay limit (falling)
-  // end of prox_led code
   
   result = MP3player.begin();
   MP3player.setVolume(10,10);
-  
  
   if(result != 0) {
     Serial.print("Error code: ");
@@ -155,12 +149,9 @@ void loop(){
 
 void readTouchInputs(){
   if(MPR121.touchStatusChanged()){
-    
     MPR121.updateTouchData();
 
-    // only make an action if we have one or fewer pins touched
-    // ignore multiple touches
-    
+    // Only make an action if we have one or fewer pins touched - ignore multiple touches
     if(MPR121.getNumTouches()<=1){
       for (int i=0; i < 12; i++){  // Check which electrodes were pressed
         if(MPR121.isNewTouch(i)){
@@ -170,44 +161,25 @@ void readTouchInputs(){
             Serial.print(i);
             Serial.println(" was just touched");
             
-            if(i<=lastPin && i>=firstPin){
+            if(i <= lastPin && i >= firstPin){
               if(MP3player.isPlaying()){
                 if(lastPlayed==i && !REPLAY_MODE){
-                  // if we're already playing the requested track, stop it
-                  // (but only if we're in REPLAY_MODE)
+                  // if we're already playing the requested track, stop it (if in REPLAY_MODE)
                   MP3player.stopTrack();
-//                  Serial.print("stopping track ");
-//                  Serial.println(i-firstPin);
-                  // switch off the relevant LED output
-//                  digitalWrite(ledPins[lastPlayed], LOW);  
+
                 } else {
                   // if we're already playing a different track (or we're in
                   // REPLAY_MODE), stop and play the newly requested one
                   MP3player.stopTrack();
-                  MP3player.playTrack(i-firstPin);
-//                  Serial.print("playing track ");
-//                  Serial.println(i-firstPin);
-
-                  // switch off the relevant LED output
-//                  digitalWrite(ledPins[lastPlayed], LOW); 
+                  MP3player.playTrack(i-firstPin);           
                   
-                  // switch on the new LED output
-//                  digitalWrite(ledPins[i], HIGH);               
-                  
-                  // don't forget to update lastPlayed - without it we don't
-                  // have a history
+                  // don't forget to update lastPlayed
                   lastPlayed = i;
                 }
               } else {
                 // if we're playing nothing, play the requested track 
                 // and update lastplayed
                 MP3player.playTrack(i-firstPin);
-//                Serial.print("playing track ");
-//                Serial.println(i-firstPin);
-
-//                // switch on the new LED output
-//                digitalWrite(ledPins[i], HIGH);
-
                 lastPlayed = i;
               }
             }     
@@ -220,21 +192,19 @@ void readTouchInputs(){
             // Stop playing track
             MP3player.stopTrack();
 
-         } 
+         }
         }
       }
     }
   }
 
-  //Added code from prox_led:
+  // Mix with code from prox_led example:
+  
   // update all of the data from the MPR121
   MPR121.updateAll();
 
   // read the difference between the measured baseline and the measured continuous data
   int reading = MPR121.getBaselineData(ELECTRODE1)-MPR121.getFilteredData(ELECTRODE1);
-
-  // print out the reading value for debug
-
 
   // constrain the reading between our low and high mapping values
   unsigned int prox = constrain(reading, LOW_DIFF, HIGH_DIFF);
@@ -250,9 +220,7 @@ void readTouchInputs(){
   
   // output the mapped value to the LED
   analogWrite(fadeLED, thisOutput);
-//  analogWrite(3, thisOutput);
 
-  // end of prox_led code
 }
 
 void checkTrackFinished(){
@@ -260,28 +228,3 @@ void checkTrackFinished(){
     digitalWrite(ledPins[lastPlayed], LOW);
   }
 }
-
-//void lightLED(){
-//   //Added code from prox_led:
-//  // update all of the data from the MPR121
-//  MPR121.updateAll();
-//
-//  // read the difference between the measured baseline and the measured continuous data
-//  int reading = MPR121.getBaselineData(ELECTRODE1)-MPR121.getFilteredData(ELECTRODE1);
-//
-//  // print out the reading value for debug
-//  Serial.println(reading); 
-//
-//  // constrain the reading between our low and high mapping values
-//  unsigned int prox = constrain(reading, LOW_DIFF, HIGH_DIFF);
-//  
-//  // implement a simple (IIR lowpass) smoothing filter
-//  lastProx = (filterWeight*lastProx) + ((1-filterWeight)*(float)prox);
-//
-//  // map the LOW_DIFF..HIGH_DIFF range to 0..255 (8-bit resolution for analogWrite)
-//  uint8_t thisOutput = (uint8_t)map(lastProx,LOW_DIFF,HIGH_DIFF,0,255);
-//
-//  // output the mapped value to the LED
-//  analogWrite(LED_BUILTIN, thisOutput);
-//  // end of prox_led code
-//}
